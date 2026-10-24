@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>aurg · 灵感英文短句库</title>
+<meta name="description" content="aurg 的独立轻量版：今日重逢、存句、句库。数据只存在你自己的浏览器里，不用账号，不用服务器。">
+<style>
+  :root { color-scheme: light; --bg:#faf7f0; --card:#ffffff; --ink:#22201c; --muted:#6f6a60; --line:#e6dfd2; --accent:#7a5c2e; --accent-soft:#f3ead8; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; line-height:1.6; }
+  header { max-width:720px; margin:0 auto; padding:28px 20px 8px; }
+  header h1 { margin:0; font-size:28px; letter-spacing:.02em; }
+  header p { margin:6px 0 0; color:var(--muted); }
+  nav { max-width:720px; margin:18px auto 0; padding:0 20px; display:flex; gap:8px; flex-wrap:wrap; }
+  nav button { border:1px solid var(--line); background:var(--card); color:var(--ink); padding:9px 16px; border-radius:999px; cursor:pointer; font-size:15px; }
+  nav button.active { background:var(--ink); color:#fff; border-color:var(--ink); }
+  main { max-width:720px; margin:0 auto; padding:16px 20px 48px; }
+  section { display:none; }
+  section.active { display:block; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; margin:14px 0; }
+  .en { font-family:Georgia,"Times New Roman",serif; font-size:21px; line-height:1.5; margin:0 0 8px; }
+  .zh { color:#44403a; margin:0 0 6px; }
+  .meta { color:var(--muted); font-size:13px; margin:4px 0 0; }
+  .tag { display:inline-block; background:var(--accent-soft); color:var(--accent); border-radius:999px; padding:2px 10px; font-size:13px; margin-right:6px; }
+  .hint { color:var(--muted); font-size:14px; }
+  label { display:block; font-size:14px; margin:14px 0 4px; }
+  input[type="text"], input[type="search"], textarea, select { width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:10px; font-size:15px; background:#fff; color:var(--ink); }
+  textarea { min-height:96px; resize:vertical; }
+  button.primary { background:var(--ink); color:#fff; border:0; padding:11px 18px; border-radius:10px; cursor:pointer; font-size:15px; }
+  button.secondary { background:#fff; border:1px solid var(--line); color:var(--ink); padding:8px 13px; border-radius:10px; cursor:pointer; font-size:14px; }
+  button.danger { color:#9c2b2b; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .row > * { flex:1; }
+  .row > button { flex:0 0 auto; }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  .empty { text-align:center; padding:28px 12px; color:var(--muted); }
+  .stat { color:var(--muted); font-size:14px; }
+  footer { max-width:720px; margin:0 auto; padding:0 20px 40px; color:var(--muted); font-size:13px; }
+  hr { border:0; border-top:1px solid var(--line); margin:20px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>aurg</h1>
+  <p>灵感英文短句库 · 独立轻量版</p>
+  <p class="stat" id="stat"></p>
+</header>
+
+<nav aria-label="主导航">
+  <button type="button" data-tab="today" class="active">今日重逢</button>
+  <button type="button" data-tab="save">存句</button>
+  <button type="button" data-tab="library">句库</button>
+</nav>
+
+<main>
+  <section id="tab-today" class="active" aria-label="今日重逢">
+    <p class="hint">每天最多 5 句，优先推你少见的句子，全库轮换。今天的牌组一旦生成就固定下来，新存的句子从明天开始进入轮换。</p>
+    <div id="today-list"></div>
+  </section>
+
+  <section id="tab-save" aria-label="存句">
+    <form id="save-form" class="card">
+      <label for="f-text">英文句子 *</label>
+      <textarea id="f-text" required placeholder="例如：Start before you feel ready."></textarea>
+      <label for="f-translation">中文译文（可选）</label>
+      <input type="text" id="f-translation" placeholder="例如：在感觉准备好之前就开始。">
+      <label for="f-source">出处（可选）</label>
+      <input type="text" id="f-source" placeholder="例如：刷视频 / 某本书 / 某篇文章">
+      <label for="f-note">备注（可选）</label>
+      <input type="text" id="f-note" placeholder="例如：想用在开场白里">
+      <label for="f-category">分类（可选）</label>
+      <select id="f-category"></select>
+      <label for="f-new-category">或新建分类（可选，填了就用新分类）</label>
+      <input type="text" id="f-new-category" placeholder="例如：写作素材">
+      <div class="actions"><button type="submit" class="primary">存入句库</button></div>
+      <p class="hint" id="save-result" aria-live="polite"></p>
+    </form>
+    <p class="hint">数据只存在你自己的浏览器里。换浏览器、换设备就看不到原来的句子，记得在“句库”底部用“导出备份”定期备份。</p>
+  </section>
+
+  <section id="tab-library" aria-label="句库">
+    <div class="card">
+      <label for="q">关键词搜索</label>
+      <input type="search" id="q" placeholder="搜英文、译文、出处或备注">
+      <label for="filter-cat">按分类筛选</label>
+      <select id="filter-cat"></select>
+    </div>
+    <div id="library-list"></div>
+    <div class="card">
+      <h2 style="font-size:18px;margin:0 0 8px;">分类管理</h2>
+      <p class="hint">删除分类不会删除句子，只会把这些句子变成“未分类”。</p>
+      <div id="category-list"></div>
+      <div class="row" style="margin-top:12px;">
+        <input type="text" id="new-cat-name" placeholder="新分类名">
+        <button type="button" class="primary" id="add-cat">新建分类</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2 style="font-size:18px;margin:0 0 8px;">备份</h2>
+      <p class="hint">导出会下载一个 JSON 文件；导入会把文件里的句子和分类合并进来，已有的同 ID 句子不会重复导入。</p>
+      <div class="actions">
+        <button type="button" class="secondary" id="export-btn">导出备份</button>
+        <label class="secondary" style="cursor:pointer;">导入备份<input type="file" id="import-file" accept="application/json,.json" hidden></label>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <hr>
+  <p>aurg 独立版 · 无账号、无服务器。打开这个页面就能用，数据在 localStorage 里，只属于当前浏览器。</p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  var KEY = 'aurg-standalone-v1';
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function uid() { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
+  function todayStr() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
+  function hashStr(s) {
+    var h = 2166136261;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+
+  function defaultData() { return { version: 1, categories: [], sentences: [], daily: { date: '', ids: [] } }; }
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return defaultData();
+      var d = JSON.parse(raw);
+      if (!d || !Array.isArray(d.sentences) || !Array.isArray(d.categories)) return defaultData();
+      if (!d.daily || typeof d.daily !== 'object') d.daily = { date: '', ids: [] };
+      return d;
+    } catch (e) { return defaultData(); }
+  }
+  function save(data) { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { /* 存储满或被禁用时静默失败，界面仍可用 */ } }
+
+  var data = load();
+  var query = '';
+  var filterCat = 'all';
+  var editingId = null;
+
+  function catName(id) {
+    if (!id) return '未分类';
+    var c = data.categories.find(function (x) { return x.id === id; });
+    return c ? c.name : '未分类';
+  }
+  function byId(id) { return data.sentences.find(function (s) { return s.id === id; }); }
+
+  // 每日牌组：当天第一次打开时生成并写回 shownCount / lastShownDate，之后当天不再变。
+  function ensureDailyDeck() {
+    var today = todayStr();
+    if (data.daily.date === today && Array.isArray(data.daily.ids)) return;
+    var sorted = data.sentences.slice().sort(function (a, b) {
+      if ((a.shownCount || 0) !== (b.shownCount || 0)) return (a.shownCount || 0) - (b.shownCount || 0);
+      return hashStr(a.id + today) - hashStr(b.id + today);
+    });
+    var picked = sorted.slice(0, 5);
+    picked.forEach(function (s) { s.shownCount = (s.shownCount || 0) + 1; s.lastShownDate = today; });
+    data.daily = { date: today, ids: picked.map(function (s) { return s.id; }) };
+    save(data);
+  }
+
+  function showTab(name) {
+    document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+    document.querySelectorAll('main section').forEach(function (s) { s.classList.toggle('active', s.id === 'tab-' + name); });
+  }
+  document.querySelectorAll('nav button').forEach(function (b) {
+    b.addEventListener('click', function () { showTab(b.dataset.tab); });
+  });
+
+  function renderStat() {
+    $('stat').textContent = '已存 ' + data.sentences.length + ' 句 · ' + data.categories.length + ' 个分类 · 今天 ' + todayStr();
+  }
+
+  function renderToday() {
+    ensureDailyDeck();
+    var box = $('today-list');
+    if (!data.sentences.length) {
+      box.innerHTML = '<div class="card empty"><p>句库还空着。</p><p>先去“存句”存下第一句，之后每天打开这里，它就会回来找你。</p><button type="button" class="primary" data-go="save">去存句</button></div>';
+      box.querySelector('[data-go]').addEventListener('click', function () { showTab('save'); });
+      return;
+    }
+    if (!data.daily.ids.length) {
+      box.innerHTML = '<div class="card empty"><p>今天没有可推的句子。</p></div>';
+      return;
+    }
+    box.innerHTML = data.daily.ids.map(function (id) {
+      var s = byId(id);
+      if (!s) return '';
+      var parts = ['<article class="card">', '<p class="en">' + esc(s.text) + '</p>'];
+      if (s.translation) parts.push('<p class="zh">' + esc(s.translation) + '</p>');
+      parts.push('<p class="meta"><span class="tag">' + esc(catName(s.categoryId)) + '</span>');
+      if (s.source) parts.push('出处：' + esc(s.source) + ' · ');
+      parts.push('已见过 ' + (s.shownCount || 0) + ' 次</p>');
+      if (s.note) parts.push('<p class="meta">备注：' + esc(s.note) + '</p>');
+      parts.push('</article>');
+      return parts.join('');
+    }).join('');
+  }
+
+  function renderSaveCategories() {
+    var sel = $('f-category');
+    var cur = sel.value;
+    sel.innerHTML = '<option value="">未分类</option>' + data.categories.map(function (c) {
+      return '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>';
+    }).join('');
+    if (cur) sel.value = cur;
+  }
+  function renderFilterCategories() {
+    var sel = $('filter-cat');
+    var cur = sel.value || 'all';
+    sel.innerHTML = '<option value="all">全部分类</option><option value="none">未分类</option>' + data.categories.map(function (c) {
+      return '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>';
+    }).join('');
+    sel.value = cur;
+  }
+
+  function renderLibrary() {
+    var q = query.trim().toLowerCase();
+    var list = data.sentences.slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); }).filter(function (s) {
+      if (filterCat === 'none' && s.categoryId) return false;
+      if (filterCat !== 'all' && filterCat !== 'none' && s.categoryId !== filterCat) return false;
+      if (!q) return true;
+      return [s.text, s.translation, s.source, s.note].join(' ').toLowerCase().indexOf(q) !== -1;
+    });
+    var box = $('library-list');
+    if (!data.sentences.length) {
+      box.innerHTML = '<div class="card empty"><p>句库还空着，去“存句”存下第一句吧。</p></div>';
+      return;
+    }
+    if (!list.length) {
+      box.innerHTML = '<div class="card empty"><p>没有符合条件的句子，换个关键词或分类试试。</p></div>';
+      return;
+    }
+    box.innerHTML = list.map(function (s) {
+      if (editingId === s.id) {
+        return '<article class="card" data-id="' + esc(s.id) + '">'
+          + '<label>英文句子 *</label><textarea data-field="text">' + esc(s.text) + '</textarea>'
+          + '<label>中文译文</label><input type="text" data-field="translation" value="' + esc(s.translation || '') + '">'
+          + '<label>出处</label><input type="text" data-field="source" value="' + esc(s.source || '') + '">'
+          + '<label>备注</label><input type="text" data-field="note" value="' + esc(s.note || '') + '">'
+          + '<label>分类</label><select data-field="categoryId"><option value="">未分类</option>'
+          + data.categories.map(function (c) { return '<option value="' + esc(c.id) + '"' + (c.id === s.categoryId ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('')
+          + '</select><div class="actions"><button type="button" class="primary" data-action="save-edit">保存</button>'
+          + '<button type="button" class="secondary" data-action="cancel-edit">取消</button></div></article>';
+      }
+      var parts = ['<article class="card" data-id="' + esc(s.id) + '">', '<p class="en">' + esc(s.text) + '</p>'];
+      if (s.translation) parts.push('<p class="zh">' + esc(s.translation) + '</p>');
+      parts.push('<p class="meta"><span class="tag">' + esc(catName(s.categoryId)) + '</span>');
+      if (s.source) parts.push('出处：' + esc(s.source) + ' · ');
+      parts.push('已见过 ' + (s.shownCount || 0) + ' 次</p>');
+      if (s.note) parts.push('<p class="meta">备注：' + esc(s.note) + '</p>');
+      parts.push('<div class="actions"><button type="button" class="secondary" data-action="edit">编辑</button>'
+        + '<button type="button" class="secondary danger" data-action="delete">删除</button></div></article>');
+      return parts.join('');
+    }).join('');
+  }
+
+  function renderCategories() {
+    var box = $('category-list');
+    if (!data.categories.length) { box.innerHTML = '<p class="hint">还没有分类，存句时可以直接新建。</p>'; return; }
+    box.innerHTML = data.categories.map(function (c) {
+      var n = data.sentences.filter(function (s) { return s.categoryId === c.id; }).length;
+      return '<div class="row" data-id="' + esc(c.id) + '" style="margin:8px 0;">'
+        + '<input type="text" value="' + esc(c.name) + '" data-cat-name>'
+        + '<span class="hint" style="flex:0 0 auto;">' + n + ' 句</span>'
+        + '<button type="button" class="secondary" data-cat-action="rename">改名</button>'
+        + '<button type="button" class="secondary danger" data-cat-action="delete">删除分类</button></div>';
+    }).join('');
+  }
+
+  function renderAll() {
+    renderStat(); renderToday(); renderSaveCategories(); renderFilterCategories(); renderLibrary(); renderCategories();
+  }
+
+  $('save-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = $('f-text').value.trim();
+    if (!text) { $('save-result').textContent = '英文句子是必填的。'; return; }
+    var newCatName = $('f-new-category').value.trim();
+    var categoryId = $('f-category').value || null;
+    if (newCatName) {
+      var existing = data.categories.find(function (c) { return c.name === newCatName; });
+      if (existing) { categoryId = existing.id; }
+      else { categoryId = uid(); data.categories.push({ id: categoryId, name: newCatName, createdAt: Date.now() }); }
+    }
+    data.sentences.push({
+      id: uid(), text: text, translation: $('f-translation').value.trim(),
+      source: $('f-source').value.trim(), note: $('f-note').value.trim(),
+      categoryId: categoryId, shownCount: 0, lastShownDate: null, createdAt: Date.now()
+    });
+    save(data);
+    e.target.reset();
+    $('save-result').textContent = '已存入句库。它从明天开始进入“今日重逢”的轮换。';
+    renderAll();
+  });
+
+  $('q').addEventListener('input', function (e) { query = e.target.value; renderLibrary(); });
+  $('filter-cat').addEventListener('change', function (e) { filterCat = e.target.value; renderLibrary(); });
+
+  $('library-list').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    var card = e.target.closest('article[data-id]');
+    if (!card) return;
+    var s = byId(card.dataset.id);
+    if (!s) return;
+    if (btn.dataset.action === 'edit') { editingId = s.id; renderLibrary(); return; }
+    if (btn.dataset.action === 'cancel-edit') { editingId = null; renderLibrary(); return; }
+    if (btn.dataset.action === 'save-edit') {
+      var text = card.querySelector('[data-field="text"]').value.trim();
+      if (!text) { alert('英文句子是必填的。'); return; }
+      s.text = text;
+      s.translation = card.querySelector('[data-field="translation"]').value.trim();
+      s.source = card.querySelector('[data-field="source"]').value.trim();
+      s.note = card.querySelector('[data-field="note"]').value.trim();
+      s.categoryId = card.querySelector('[data-field="categoryId"]').value || null;
+      editingId = null; save(data); renderAll(); return;
+    }
+    if (btn.dataset.action === 'delete') {
+      if (!confirm('确定删除这句吗？它也会从今天的推送里去掉。')) return;
+      data.sentences = data.sentences.filter(function (x) { return x.id !== s.id; });
+      data.daily.ids = (data.daily.ids || []).filter(function (id) { return id !== s.id; });
+      save(data); renderAll();
+    }
+  });
+
+  $('add-cat').addEventListener('click', function () {
+    var name = $('new-cat-name').value.trim();
+    if (!name) return;
+    if (data.categories.some(function (c) { return c.name === name; })) { alert('这个分类已经有了。'); return; }
+    data.categories.push({ id: uid(), name: name, createdAt: Date.now() });
+    $('new-cat-name').value = '';
+    save(data); renderAll();
+  });
+
+  $('category-list').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-cat-action]');
+    if (!btn) return;
+    var row = e.target.closest('[data-id]');
+    if (!row) return;
+    var cat = data.categories.find(function (c) { return c.id === row.dataset.id; });
+    if (!cat) return;
+    if (btn.dataset.catAction === 'rename') {
+      var name = row.querySelector('[data-cat-name]').value.trim();
+      if (!name) { alert('分类名不能为空。'); return; }
+      cat.name = name; save(data); renderAll(); return;
+    }
+    if (btn.dataset.catAction === 'delete') {
+      if (!confirm('删除分类不会删除句子，这些句子会变成“未分类”。确定吗？')) return;
+      data.categories = data.categories.filter(function (c) { return c.id !== cat.id; });
+      data.sentences.forEach(function (s) { if (s.categoryId === cat.id) s.categoryId = null; });
+      if (filterCat === cat.id) filterCat = 'all';
+      save(data); renderAll();
+    }
+  });
+
+  $('export-btn').addEventListener('click', function () {
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'aurg-backup-' + todayStr() + '.json';
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+
+  $('import-file').addEventListener('change', function (e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var imp = JSON.parse(reader.result);
+        if (!imp || !Array.isArray(imp.sentences)) throw new Error('bad');
+        (imp.categories || []).forEach(function (c) {
+          if (c && c.id && c.name && !data.categories.some(function (x) { return x.id === c.id; })) {
+            data.categories.push({ id: c.id, name: c.name, createdAt: c.createdAt || Date.now() });
+          }
+        });
+        var added = 0;
+        imp.sentences.forEach(function (s) {
+          if (s && s.id && s.text && !byId(s.id)) {
+            data.sentences.push({
+              id: s.id, text: s.text, translation: s.translation || '', source: s.source || '',
+              note: s.note || '', categoryId: s.categoryId || null,
+              shownCount: s.shownCount || 0, lastShownDate: s.lastShownDate || null,
+              createdAt: s.createdAt || Date.now()
+            });
+            added++;
+          }
+        });
+        save(data); renderAll();
+        alert('导入完成，新增 ' + added + ' 句。');
+      } catch (err) { alert('这个文件不是 aurg 的备份，导入失败。'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
